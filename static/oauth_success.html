@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html>
+<body>
+<script>
+  if (window.opener) {
+    window.opener.postMessage('instagram_connected', '*');
+    window.close();
+  } else {
+    // Fallback if opened directly
+    window.location.href = '/Frontend/Devindex.html';
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Boardside — Dev Console</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #080808;
+      --surface:   #111;
+      --border:    #1e1e1e;
+      --border-hi: #2a2a2a;
+      --text:      #c8c8c8;
+      --muted:     #444;
+      --green:     #4ade80;
+      --blue:      #60a5fa;
+      --red:       #f87171;
+      --yellow:    #fbbf24;
+      --white:     #f0f0f0;
+    }
+
+    body {
+      font-family: 'IBM Plex Mono', monospace;
+      background: var(--bg);
+      color: var(--text);
+      padding: 2rem 1.5rem;
+      max-width: 900px;
+      margin: 0 auto;
+      font-size: 0.82rem;
+      line-height: 1.5;
+    }
+
+    /* ── Header ── */
+    header {
+      display: flex;
+      align-items: baseline;
+      gap: 1rem;
+      margin-bottom: 2rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid var(--border);
+    }
+    header h1 { font-size: 1rem; font-weight: 600; color: var(--white); }
+    header p  { font-size: 0.72rem; color: var(--muted); }
+
+    /* ── Status Pills ── */
+    .status-row {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      margin-bottom: 1.5rem;
+    }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.25rem 0.6rem;
+      border-radius: 3px;
+      border: 1px solid var(--border-hi);
+      background: var(--surface);
+      font-size: 0.72rem;
+      color: var(--muted);
+    }
+    .pill .dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--muted);
+      flex-shrink: 0;
+    }
+    .pill.ok     { border-color: #166534; color: var(--green); }
+    .pill.ok .dot { background: var(--green); box-shadow: 0 0 4px var(--green); }
+    .pill.warn   { border-color: #854d0e; color: var(--yellow); }
+    .pill.warn .dot { background: var(--yellow); }
+
+    /* ── Grid Layout ── */
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+    @media (max-width: 640px) { .grid { grid-template-columns: 1fr; } }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1.25rem;
+    }
+    .card.full { grid-column: 1 / -1; }
+
+    .card-title {
+      font-size: 0.68rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--muted);
+      margin-bottom: 1rem;
+      padding-bottom: 0.6rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    /* ── Form elements ── */
+    .field { margin-bottom: 0.6rem; }
+    .field label { display: block; font-size: 0.68rem; color: var(--muted); margin-bottom: 0.25rem; }
+
+    input[type="email"],
+    input[type="password"],
+    input[type="text"],
+    input[type="file"],
+    textarea {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border-hi);
+      color: var(--text);
+      padding: 0.45rem 0.6rem;
+      border-radius: 3px;
+      font-family: inherit;
+      font-size: 0.82rem;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    input:focus, textarea:focus { border-color: #444; }
+    textarea { resize: vertical; min-height: 56px; }
+
+    .row { display: flex; gap: 0.5rem; }
+    .row input { flex: 1; min-width: 0; }
+
+    /* ── Buttons ── */
+    button {
+      font-family: inherit;
+      font-size: 0.78rem;
+      padding: 0.4rem 0.9rem;
+      border-radius: 3px;
+      cursor: pointer;
+      border: 1px solid var(--border-hi);
+      background: #1a1a1a;
+      color: var(--text);
+      white-space: nowrap;
+      transition: background 0.12s, border-color 0.12s;
+    }
+    button:hover:not(:disabled) { background: #222; }
+    button:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    button.btn-primary { background: #1e3a8a; border-color: #2563eb; color: #93c5fd; }
+    button.btn-primary:hover:not(:disabled) { background: #1d4ed8; }
+
+    button.btn-danger  { background: #450a0a; border-color: #7f1d1d; color: #fca5a5; }
+    button.btn-danger:hover:not(:disabled) { background: #7f1d1d; }
+
+    button.btn-connect {
+      width: 100%;
+      padding: 0.6rem;
+      border: 1px solid var(--border-hi);
+      background: var(--bg);
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-radius: 3px;
+      margin-bottom: 0.5rem;
+      transition: all 0.15s;
+    }
+    button.btn-connect:hover:not(:disabled) { border-color: #444; color: var(--text); background: #111; }
+    button.btn-connect.connected { border-color: #166534; color: var(--green); }
+    button.btn-connect .platform-name { font-weight: 500; }
+    button.btn-connect .arrow { font-size: 0.7rem; }
+
+    /* ── Log ── */
+    .log {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      padding: 0.6rem 0.75rem;
+      font-size: 0.75rem;
+      line-height: 1.7;
+      min-height: 40px;
+      max-height: 180px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+      margin-top: 0.75rem;
+      color: var(--muted);
+    }
+    .log .ok   { color: var(--green); }
+    .log .err  { color: var(--red); }
+    .log .info { color: var(--blue); }
+    .log .warn { color: var(--yellow); }
+
+    /* ── Platform checkboxes ── */
+    .platform-checks {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      margin: 0.75rem 0;
+    }
+    .platform-checks label {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      cursor: pointer;
+      color: var(--text);
+      font-size: 0.8rem;
+      margin: 0;
+    }
+    .platform-checks label.disabled { color: var(--muted); cursor: not-allowed; }
+    .platform-checks input[type="checkbox"] { width: auto; }
+
+    /* ── Job cards ── */
+    .job-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 0.5rem;
+      margin-top: 0.75rem;
+    }
+    .job-card {
+      background: var(--bg);
+      border: 1px solid var(--border-hi);
+      border-radius: 3px;
+      padding: 0.6rem 0.75rem;
+    }
+    .job-card.published { border-color: #166534; }
+    .job-card.failed    { border-color: #7f1d1d; }
+    .job-card.pending   { border-color: #78350f; }
+    .job-card.processing { border-color: #1e3a8a; }
+    .job-card .jc-platform { font-size: 0.68rem; color: var(--muted); margin-bottom: 0.2rem; text-transform: uppercase; letter-spacing: 0.08em; }
+    .job-card .jc-status   { font-weight: 500; margin-bottom: 0.2rem; }
+    .job-card.published .jc-status { color: var(--green); }
+    .job-card.failed    .jc-status { color: var(--red); }
+    .job-card.pending   .jc-status { color: var(--yellow); }
+    .job-card.processing .jc-status { color: var(--blue); }
+    .job-card .jc-detail { font-size: 0.7rem; color: var(--muted); word-break: break-all; }
+
+    /* ── URL bar ── */
+    .url-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>BOARDSIDE / DEV CONSOLE</h1>
+  <p>backend test interface</p>
+</header>
+
+<!-- ── Status Pills ── -->
+<div class="status-row">
+  <div class="pill" id="pillAuth"><span class="dot"></span> auth: not logged in</div>
+  <div class="pill" id="pillIG"><span class="dot"></span> instagram: —</div>
+  <div class="pill" id="pillYT"><span class="dot"></span> youtube: —</div>
+  <div class="pill" id="pillTT"><span class="dot"></span> tiktok: —</div>
+  <div class="pill" id="pillJob"><span class="dot"></span> last job: —</div>
+</div>
+
+<!-- ── Row 1: URLs + Auth ── -->
+<div class="grid" style="margin-bottom:1rem">
+
+  <!-- Service URLs -->
+  <div class="card">
+    <div class="card-title">Service URLs</div>
+    <div class="field">
+      <label>Core</label>
+      <input type="text" id="coreUrl" value="http://localhost:8000" />
+    </div>
+    <div class="field">
+      <label>Auth</label>
+      <input type="text" id="authUrl" value="http://localhost:8002" />
+    </div>
+  </div>
+
+  <!-- Register -->
+  <div class="card">
+    <div class="card-title">Register</div>
+    <div class="field">
+      <input type="email" id="regEmail" placeholder="email" />
+    </div>
+    <div class="field row">
+      <input type="password" id="regPassword" placeholder="password" />
+      <button class="btn-primary" onclick="register()">Register</button>
+    </div>
+    <div class="log" id="regLog">—</div>
+  </div>
+
+</div>
+
+<!-- ── Row 2: Login + Connect ── -->
+<div class="grid" style="margin-bottom:1rem">
+
+  <!-- Login / Logout -->
+  <div class="card">
+    <div class="card-title">Login / Logout</div>
+    <div class="field">
+      <input type="email" id="loginEmail" placeholder="email" />
+    </div>
+    <div class="field row">
+      <input type="password" id="loginPassword" placeholder="password" />
+      <button class="btn-primary" onclick="login()">Login</button>
+      <button class="btn-danger" onclick="logout()">Out</button>
+    </div>
+    <div class="log" id="loginLog">—</div>
+  </div>
+
+  <!-- Connect Platforms -->
+  <div class="card">
+    <div class="card-title">Connect Platforms</div>
+    <button class="btn-connect" id="btnIG" onclick="connectPlatform('instagram')">
+      <span class="platform-name">Instagram</span>
+      <span class="arrow" id="igArrow">connect →</span>
+    </button>
+    <button class="btn-connect" id="btnYT" onclick="connectPlatform('youtube')">
+      <span class="platform-name">YouTube</span>
+      <span class="arrow" id="ytArrow">connect →</span>
+    </button>
+    <button class="btn-connect" id="btnTT" onclick="connectPlatform('tiktok')">
+      <span class="platform-name">TikTok</span>
+      <span class="arrow" id="ttArrow">connect →</span>
+    </button>
+    <div class="log" id="connectLog">—</div>
+  </div>
+
+</div>
+
+<!-- ── Row 3: Publish (full width) ── -->
+<div class="grid" style="margin-bottom:1rem">
+  <div class="card full">
+    <div class="card-title">Publish Video</div>
+    <div class="url-row" style="margin-bottom:0.6rem">
+      <div class="field">
+        <label>Video file</label>
+        <input type="file" id="videoFile" accept="video/mp4,video/quicktime,video/x-m4v" />
+      </div>
+      <div class="field">
+        <label>Caption</label>
+        <textarea id="caption" placeholder="Caption / title for the post..."></textarea>
+      </div>
+    </div>
+    <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.75rem">
+      <div class="platform-checks">
+        <label><input type="checkbox" id="platInstagram" /> Instagram</label>
+        <label><input type="checkbox" id="platYoutube" /> YouTube</label>
+        <label><input type="checkbox" id="platTiktok" /> TikTok</label>
+      </div>
+      <button class="btn-primary" onclick="publish()">Publish →</button>
+    </div>
+    <div class="log" id="publishLog">—</div>
+  </div>
+</div>
+
+<!-- ── Row 4: Job Status (full width) ── -->
+<div class="grid">
+  <div class="card full">
+    <div class="card-title">Job Status</div>
+    <div class="row">
+      <input type="text" id="jobId" placeholder="job_id" />
+      <button onclick="pollOnce()">Poll</button>
+      <button onclick="startPolling()" id="pollBtn">Auto</button>
+      <button class="btn-danger" onclick="stopPolling()" id="stopBtn" disabled>Stop</button>
+    </div>
+    <div class="job-cards" id="jobCards"></div>
+    <div class="log" id="pollLog">—</div>
+  </div>
+</div>
+
+<script>
+  // ── State ────────────────────────────────────────────────────────
+  let token = localStorage.getItem('bs_token') || null;
+  let pollInterval = null;
+  let connections = new Set(); // track connected platforms
+
+  const core = () => document.getElementById('coreUrl').value.replace(/\/$/, '');
+  const auth = () => document.getElementById('authUrl').value.replace(/\/$/, '');
+
+  // ── Utilities ────────────────────────────────────────────────────
+  function esc(str) {
+    return String(str)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function setLog(id, msg, type = 'info') {
+    document.getElementById(id).innerHTML = `<span class="${type}">${esc(msg)}</span>`;
+  }
+
+  function addLog(id, msg, type = 'info') {
+    const el = document.getElementById(id);
+    el.innerHTML += `\n<span class="${type}">${esc(msg)}</span>`;
+    el.scrollTop = el.scrollHeight;
+  }
+
+  async function apiFetch(url, opts = {}) {
+    if (token) {
+      opts.headers = opts.headers || {};
+      opts.headers['Authorization'] = `Bearer ${token}`;
+    }
+    try {
+      const resp = await fetch(url, opts);
+      const data = await resp.json().catch(() => ({ detail: resp.statusText }));
+      return { ok: resp.ok, status: resp.status, data };
+    } catch (e) {
+      return { ok: false, status: 0, data: { detail: e.message } };
+    }
+  }
+
+  // ── Status Bar ───────────────────────────────────────────────────
+  function updateStatus() {
+    const auth_ = document.getElementById('pillAuth');
+    if (token) {
+      auth_.className = 'pill ok';
+      auth_.innerHTML = '<span class="dot"></span> auth: logged in';
+    } else {
+      auth_.className = 'pill';
+      auth_.innerHTML = '<span class="dot"></span> auth: not logged in';
+    }
+
+    const igPill = document.getElementById('pillIG');
+    const ttPill = document.getElementById('pillTT');
+    const ytPill = document.getElementById('pillYT');
+
+    if (connections.has('instagram')) {
+      igPill.className = 'pill ok';
+      igPill.innerHTML = '<span class="dot"></span> instagram: connected';
+      document.getElementById('btnIG').className = 'btn-connect connected';
+      document.getElementById('igArrow').textContent = '✓ connected';
+    } else {
+      igPill.className = 'pill';
+      igPill.innerHTML = '<span class="dot"></span> instagram: —';
+      document.getElementById('btnIG').className = 'btn-connect';
+      document.getElementById('igArrow').textContent = 'connect →';
+    }
+
+    if (connections.has('tiktok')) {
+      ttPill.className = 'pill ok';
+      ttPill.innerHTML = '<span class="dot"></span> tiktok: connected';
+      document.getElementById('btnTT').className = 'btn-connect connected';
+      document.getElementById('ttArrow').textContent = '✓ connected';
+    } else {
+      ttPill.className = 'pill';
+      ttPill.innerHTML = '<span class="dot"></span> tiktok: —';
+      document.getElementById('btnTT').className = 'btn-connect';
+      document.getElementById('ttArrow').textContent = 'connect →';
+    }
+
+    if (connections.has('youtube')) {
+      ytPill.className = 'pill ok';
+      ytPill.innerHTML = '<span class="dot"></span> youtube: connected';
+      document.getElementById('btnYT').className = 'btn-connect connected';
+      document.getElementById('ytArrow').textContent = '✓ connected';
+    } else {
+      ytPill.className = 'pill';
+      ytPill.innerHTML = '<span class="dot"></span> youtube: —';
+      document.getElementById('btnYT').className = 'btn-connect';
+      document.getElementById('ytArrow').textContent = 'connect →';
+    }
+  }
+
+  async function checkConnections() {
+    if (!token) return;
+    const { ok, data } = await apiFetch(`${auth()}/auth/connections`);
+    if (!ok) return;
+    connections.clear();
+    data.forEach(c => connections.add(c.platform));
+    updateStatus();
+
+    // Auto-check platform checkboxes for connected platforms
+    document.getElementById('platInstagram').checked = connections.has('instagram');
+    document.getElementById('platYoutube').checked = connections.has('youtube');
+    document.getElementById('platTiktok').checked = connections.has('tiktok');
+  }
+
+  // ── Register ────────────────────────────────────────────────────
+  async function register() {
+    const email = document.getElementById('regEmail').value.trim();
+    const pass  = document.getElementById('regPassword').value;
+    if (!email || !pass) return setLog('regLog', 'Email and password required.', 'err');
+
+    setLog('regLog', 'Registering...', 'info');
+    const { ok, data } = await apiFetch(`${auth()}/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password: pass }),
+    });
+
+    ok
+      ? setLog('regLog', `✓ Registered: ${data.email}`, 'ok')
+      : setLog('regLog', `✗ ${data.detail || JSON.stringify(data)}`, 'err');
+  }
+
+  // ── Login / Logout ───────────────────────────────────────────────
+  async function login() {
+    const email = document.getElementById('loginEmail').value.trim();
+    const pass  = document.getElementById('loginPassword').value;
+    if (!email || !pass) return setLog('loginLog', 'Email and password required.', 'err');
+
+    setLog('loginLog', 'Logging in...', 'info');
+    const { ok, data } = await apiFetch(`${auth()}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password: pass }),
+    });
+
+    if (ok) {
+      token = data.access_token;
+      localStorage.setItem('bs_token', token);
+      setLog('loginLog', `✓ Logged in.`, 'ok');
+      addLog('loginLog', `token: ${token.slice(0, 36)}...`, 'info');
+      updateStatus();
+      await checkConnections();
+    } else {
+      setLog('loginLog', `✗ ${data.detail || JSON.stringify(data)}`, 'err');
+    }
+  }
+
+  async function logout() {
+    if (!token) return setLog('loginLog', 'Not logged in.', 'warn');
+    await apiFetch(`${auth()}/auth/logout`, { method: 'POST' });
+    token = null;
+    connections.clear();
+    localStorage.removeItem('bs_token');
+    updateStatus();
+    setLog('loginLog', '✓ Logged out.', 'ok');
+  }
+
+  // ── Connect Platforms ────────────────────────────────────────────
+  function connectPlatform(platform) {
+    if (!token) return setLog('connectLog', 'Log in first.', 'err');
+
+    setLog('connectLog', `Opening ${platform} consent screen...`, 'info');
+
+    const popup = window.open(
+      `${auth()}/auth/${platform}?token=${encodeURIComponent(token)}`,
+      '_blank',
+      'width=600,height=700'
+    );
+
+    // Listen for popup to signal completion
+    const handler = (e) => {
+      if (e.data === `${platform}_connected`) {
+        window.removeEventListener('message', handler);
+        if (popup && !popup.closed) popup.close();
+        connections.add(platform);
+        updateStatus();
+        setLog('connectLog', `✓ ${platform} connected.`, 'ok');
+
+        // Auto-check the platform checkbox
+        if (platform === 'instagram') document.getElementById('platInstagram').checked = true;
+        if (platform === 'youtube')   document.getElementById('platYoutube').checked = true;
+        if (platform === 'tiktok')    document.getElementById('platTiktok').checked = true;
+      }
+    };
+
+    window.addEventListener('message', handler);
+
+    // Fallback: if user closes popup manually, check connections
+    const timer = setInterval(() => {
+      if (popup && popup.closed) {
+        clearInterval(timer);
+        checkConnections();
+      }
+    }, 1000);
+  }
+
+  // ── Publish ──────────────────────────────────────────────────────
+  async function publish() {
+    if (!token) return setLog('publishLog', 'Log in first.', 'err');
+
+    const fileInput = document.getElementById('videoFile');
+    const caption   = document.getElementById('caption').value.trim();
+    const instagram = document.getElementById('platInstagram').checked;
+    const youtube   = document.getElementById('platYoutube').checked;
+    const tiktok    = document.getElementById('platTiktok').checked;
+
+    if (!fileInput.files[0]) return setLog('publishLog', 'Select a video file.', 'err');
+    if (!caption)            return setLog('publishLog', 'Enter a caption.', 'err');
+    if (!instagram && !youtube && !tiktok) return setLog('publishLog', 'Select at least one platform.', 'err');
+
+    setLog('publishLog', 'Uploading...', 'info');
+
+    const form = new FormData();
+    form.append('video',   fileInput.files[0]);
+    form.append('caption', caption);
+    if (instagram) form.append('platforms', 'instagram');
+    if (youtube)   form.append('platforms', 'youtube');
+    if (tiktok)    form.append('platforms', 'tiktok');
+
+    const { ok, data } = await apiFetch(`${core()}/api/v1/publish`, {
+      method: 'POST',
+      body: form,
+    });
+
+    if (ok) {
+      setLog('publishLog', `✓ Accepted — job_id: ${data.job_id}`, 'ok');
+      addLog('publishLog', `status: ${data.status}`, 'info');
+      document.getElementById('jobId').value = data.job_id;
+
+      const jobPill = document.getElementById('pillJob');
+      jobPill.className = 'pill warn';
+      jobPill.innerHTML = `<span class="dot"></span> job: ${data.job_id.slice(0,8)}…`;
+
+      startPolling();
+    } else {
+      setLog('publishLog', `✗ ${data.detail || JSON.stringify(data)}`, 'err');
+    }
+  }
+
+  // ── Job Polling ──────────────────────────────────────────────────
+  async function pollOnce() {
+    const jobId = document.getElementById('jobId').value.trim();
+    if (!jobId) return setLog('pollLog', 'Enter a job_id.', 'warn');
+
+    const { ok, data } = await apiFetch(`${core()}/api/v1/jobs/${jobId}`);
+    if (!ok) {
+      setLog('pollLog', `✗ ${data.detail || JSON.stringify(data)}`, 'err');
+      return null;
+    }
+
+    renderJobCards(data.platforms);
+    setLog('pollLog', JSON.stringify(data, null, 2), 'info');
+    return data.platforms;
+  }
+
+  function renderJobCards(platforms) {
+    document.getElementById('jobCards').innerHTML = platforms.map(p => {
+      const detail = p.platform_post_id
+        ? `id: ${p.platform_post_id}`
+        : p.error || 'in progress…';
+      return `
+        <div class="job-card ${p.status}">
+          <div class="jc-platform">${p.platform}</div>
+          <div class="jc-status">${p.status}</div>
+          <div class="jc-detail">${esc(detail)}</div>
+          <div class="jc-detail" style="margin-top:0.2rem;font-size:0.65rem">
+            ${new Date(p.updated_at).toLocaleTimeString()}
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  function startPolling() {
+    stopPolling();
+    document.getElementById('pollBtn').disabled = true;
+    document.getElementById('stopBtn').disabled = false;
+    addLog('pollLog', 'Auto-polling every 3s…', 'info');
+
+    pollInterval = setInterval(async () => {
+      const platforms = await pollOnce();
+      if (!platforms) return;
+
+      const allDone = platforms.every(p =>
+        p.status === 'published' || p.status === 'failed'
+      );
+
+      if (allDone) {
+        stopPolling();
+        addLog('pollLog', '✓ All platforms finished.', 'ok');
+
+        const jobPill = document.getElementById('pillJob');
+        const allOk = platforms.every(p => p.status === 'published');
+        jobPill.className = allOk ? 'pill ok' : 'pill';
+        jobPill.innerHTML = `<span class="dot"></span> job: ${allOk ? 'published' : 'done w/ errors'}`;
+      }
+    }, 3000);
+  }
+
+  function stopPolling() {
+    if (pollInterval) { clearInterval(pollInterval); pollInterval = null; }
+    document.getElementById('pollBtn').disabled = false;
+    document.getElementById('stopBtn').disabled = true;
+  }
+
+  // ── Init ─────────────────────────────────────────────────────────
+  updateStatus();
+  if (token) checkConnections();
+
+  // Handle redirect back from OAuth success page
+  const params = new URLSearchParams(window.location.search);
+  const connected = params.get('connected');
+  if (connected) {
+    connections.add(connected);
+    updateStatus();
+    setLog('connectLog', `✓ ${connected} connected via redirect.`, 'ok');
+    // Clean the URL
+    window.history.replaceState({}, '', window.location.pathname);
+  }
+</script>
+</body>
+</html>
